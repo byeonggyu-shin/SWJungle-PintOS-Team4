@@ -4,6 +4,7 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
 
 #include <stdbool.h>
 
@@ -33,7 +34,7 @@ return false;
 bool delete_vme (struct hash *vm, struct page *page)
 {
 /* hash_delete()함수 사용 */
-hash_delete(vm, &page->hash_elem)
+hash_delete(vm, &page->hash_elem);
 }
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -253,4 +254,18 @@ void *hash_B = hash_entry(b, struct page, hash_elem)->va;
 return (hash_A) < (hash_B);
 }
 
+struct page *find_vme (void *va)
+{
+/* pg_round_down()으로 vaddr의 페이지 번호를 얻음 */
+uint64_t va_page_num = pg_round_down(va);
+struct hash cur_hash = thread_current()->vm;
 
+/* hash_find() 함수를 사용해서 hash_elem 구조체 얻음 */
+hash_find(cur_hash, va_page_num);
+
+/* 만약 존재하지 않는다면 NULL 리턴 */
+
+
+/* hash_entry()로 해당 hash_elem의 vm_entry 구조체 리턴 */
+
+}

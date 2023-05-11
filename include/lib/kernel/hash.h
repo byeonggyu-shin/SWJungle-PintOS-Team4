@@ -26,6 +26,9 @@
 #include "list.h"
 
 /* Hash element. */
+/**
+ * 해시 테이블에 요소를 저장하는 데 사용되는 내장 구조
+*/
 struct hash_elem {
 	struct list_elem list_elem;
 };
@@ -35,26 +38,41 @@ struct hash_elem {
  * name of the outer structure STRUCT and the member name MEMBER
  * of the hash element.  See the big comment at the top of the
  * file for an example. */
+/**
+ *  hash_elem에 대한 포인터를 포함하는 구조에 대한 포인터로 다시 변환하도록 정의
+*/
 #define hash_entry(HASH_ELEM, STRUCT, MEMBER)                   \
 	((STRUCT *) ((uint8_t *) &(HASH_ELEM)->list_elem        \
 		- offsetof (STRUCT, MEMBER.list_elem)))
 
 /* Computes and returns the hash value for hash element E, given
  * auxiliary data AUX. */
+/**
+ *  hash_elem 및 보조 데이터를 취하고 uint64_t 해시 값을 반환하는 해시 함수에 대한 함수 포인터 유형을 정의
+*/
 typedef uint64_t hash_hash_func (const struct hash_elem *e, void *aux);
 
 /* Compares the value of two hash elements A and B, given
  * auxiliary data AUX.  Returns true if A is less than B, or
  * false if A is greater than or equal to B. */
+/**
+ * 두 개의 hash_elem을 비교하고 첫 번째 요소가 두 번째 요소보다 작은지 나타내는 bool을 반환하는 비교 함수에 대한 함수 포인터 유형을 정의
+*/
 typedef bool hash_less_func (const struct hash_elem *a,
 		const struct hash_elem *b,
 		void *aux);
 
 /* Performs some operation on hash element E, given auxiliary
  * data AUX. */
+/**
+ *  보조 데이터가 주어진 hash_elem에서 일부 작업을 수행하는 작업에 대한 함수 포인터 유형을 정의
+*/
 typedef void hash_action_func (struct hash_elem *e, void *aux);
 
 /* Hash table. */
+/**
+ * 해싱, 비교 및 ​​보조 데이터를 위한 요소 수, 버킷 수, 버킷 배열 및 함수 포인터를 포함하는 기본 해시 테이블 구조
+*/
 struct hash {
 	size_t elem_cnt;            /* Number of elements in table. */
 	size_t bucket_cnt;          /* Number of buckets, a power of 2. */
@@ -65,6 +83,9 @@ struct hash {
 };
 
 /* A hash table iterator. */
+/**
+ * 해시 테이블, 현재 버킷 및 현재 해시 요소를 포함하는 해시 테이블 반복자에 대한 것
+*/
 struct hash_iterator {
 	struct hash *hash;          /* The hash table. */
 	struct list *bucket;        /* Current bucket. */
@@ -72,9 +93,10 @@ struct hash_iterator {
 };
 
 /* Basic life cycle. */
-bool hash_init (struct hash *, hash_hash_func *, hash_less_func *, void *aux);
-void hash_clear (struct hash *, hash_action_func *);
-void hash_destroy (struct hash *, hash_action_func *);
+/* 해시 테이블 수명 주기에 대한 함수 */
+bool hash_init (struct hash *, hash_hash_func *, hash_less_func *, void *aux);  /* 해시 테이블을 초기화 */
+void hash_clear (struct hash *, hash_action_func *);  /* 요소를 지움 */
+void hash_destroy (struct hash *, hash_action_func *);   /* 해시 테이블을 파괴 */
 
 /* Search, insertion, deletion. */
 struct hash_elem *hash_insert (struct hash *, struct hash_elem *);
