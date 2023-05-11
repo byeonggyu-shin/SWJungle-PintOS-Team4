@@ -3,11 +3,46 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "lib/kernel/hash.h"
 
+#include <stdbool.h>
+
+static unsigned vm_hash_func (const struct hash_elem *e,void *aux);
+static bool vm_less_func (const struct hash_elem *a, const struct hash_elem *b);
+// bool insert_vme (struct hash *vm, struct vm_entry *vme);
+// bool delete_vme (struct hash *vm, struct vm_entry *vme);
+
+/**
+ * hash_insert() 함수를 이용하여 vm_entry를 해시 테이블에 삽입
+*/
+bool insert_vme (struct hash *vm, struct page *page)
+{
+/* hash_insert()함수 사용 */
+
+if(hash_insert(vm, &page->hash_elem)){
+	return true;
+}
+
+return false;
+
+}
+
+/**
+ * hash_delete() 함수를 이용하여 vm_entry를 해시 테이블에서 제거
+*/
+bool delete_vme (struct hash *vm, struct page *page)
+{
+/* hash_delete()함수 사용 */
+hash_delete(vm, &page->hash_elem)
+}
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
 vm_init (void) {
+	struct hash cur_hash = thread_current()->vm;
+
+	hash_init(&cur_hash, vm_hash_func, vm_less_func, NULL);
+	 
 	vm_anon_init ();
 	vm_file_init ();
 #ifdef EFILESYS  /* For project 4 */
@@ -16,6 +51,7 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -188,3 +224,33 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 }
+
+/**
+ * vm_entry의 vaddr을 인자값으로 hash_int() 함수를 사용하여 해시 값 반환
+ */
+static unsigned vm_hash_func (const struct hash_elem *e,void *aux)
+{
+/* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
+void *hash_va = hash_entry(e, struct page, hash_elem)->va;
+/* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을
+구하고 반환 */
+return hash_int((uint64_t)&hash_va);
+}
+
+/**
+ * 입력된 두 hash_elem의 vaddr 비교
+ * a의 vaddr이 b보다 작을 시 true 반환
+ * a의 vaddr이 b보다 클 시 false 반환
+*/
+static bool vm_less_func (const struct hash_elem *a, const struct
+hash_elem *b)
+{
+/* hash_entry()로 각각의 element에 대한 vm_entry 구조체를 얻은
+후 vaddr 비교 (b가 크다면 true, a가 크다면 false */
+void *hash_A = hash_entry(a, struct page, hash_elem)->va;
+void *hash_B = hash_entry(b, struct page, hash_elem)->va;
+
+return (hash_A) < (hash_B);
+}
+
+
