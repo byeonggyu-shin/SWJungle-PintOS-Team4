@@ -10,32 +10,7 @@
 
 static unsigned vm_hash_func (const struct hash_elem *e,void *aux);
 static bool vm_less_func (const struct hash_elem *a, const struct hash_elem *b);
-// bool insert_vme (struct hash *vm, struct vm_entry *vme);
-// bool delete_vme (struct hash *vm, struct vm_entry *vme);
 
-/**
- * hash_insert() 함수를 이용하여 vm_entry를 해시 테이블에 삽입
-*/
-bool insert_vme (struct hash *vm, struct page *page)
-{
-/* hash_insert()함수 사용 */
-
-if(hash_insert(vm, &page->hash_elem)){
-	return true;
-}
-
-return false;
-
-}
-
-/**
- * hash_delete() 함수를 이용하여 vm_entry를 해시 테이블에서 제거
-*/
-bool delete_vme (struct hash *vm, struct page *page)
-{
-/* hash_delete()함수 사용 */
-hash_delete(vm, &page->hash_elem);
-}
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -100,6 +75,25 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
 
+	/* pg_round_down()으로 vaddr의 페이지 번호를 얻음 */
+	uint64_t va_page_num = pg_round_down(va);
+
+	/* Create a temporary vm_entry to use for searching */
+	page->va = va_page_num;
+
+	/* Prepare a hash_elem for the search */
+	struct hash_elem *temp_hash_elem = hash_find(spt, &(page->hash_elem));
+
+	/* Check if the element was found */
+	/* 만약 존재하지 않는다면 NULL 리턴 */
+	if (temp_hash_elem == NULL) {
+			return NULL;
+}
+
+/* Return the vm_entry structure of the corresponding hash_elem with hash_entry() */
+/* hash_entry()로 해당 hash_elem의 page 구조체 리턴 */
+return hash_entry(temp_hash_elem, struct page, hash_elem);
+
 	return page;
 }
 
@@ -109,13 +103,18 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	if(hash_insert(spt, &page->hash_elem)){
+		return !succ;
+	}
 	return succ;
 }
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 	vm_dealloc_page (page);
+
+	// hash_delete(spt, &page->hash_elem);
+
 	return true;
 }
 
@@ -146,6 +145,15 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
+	char *new_memory;
+
+	if(new_memory = palloc_get_page(PAL_USER)){
+		frame->kva = new_memory;
+		frame->page = NULL;
+	}
+	else{
+		PANIC("todo");
+	}
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -187,7 +195,8 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
-
+	page->va = va;
+	
 	return vm_do_claim_page (page);
 }
 
@@ -201,7 +210,9 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
+	if(!spt_insert_page(&thread_current()->spt, page)){
+		return false;
+	}
 	return swap_in (page, frame->kva);
 }
 
@@ -252,29 +263,4 @@ void *hash_A = hash_entry(a, struct page, hash_elem)->va;
 void *hash_B = hash_entry(b, struct page, hash_elem)->va;
 
 return (hash_A) < (hash_B);
-}
-
-struct page *find_vme (void *va)
-{
-/* pg_round_down()으로 vaddr의 페이지 번호를 얻음 */
-uint64_t va_page_num = pg_round_down(va);
-struct hash cur_hash = thread_current()->vm;
-
-
-/* Create a temporary vm_entry to use for searching */
-struct page temp_vm_entry;
-temp_vm_entry.va = va_page_num;
-
-/* Prepare a hash_elem for the search */
-struct hash_elem *temp_hash_elem = hash_find(&cur_hash, &(temp_vm_entry.hash_elem));
-
-/* Check if the element was found */
-/* 만약 존재하지 않는다면 NULL 리턴 */
-if (temp_hash_elem == NULL) {
-		return NULL;
-}
-
-/* Return the vm_entry structure of the corresponding hash_elem with hash_entry() */
-/* hash_entry()로 해당 hash_elem의 page 구조체 리턴 */
-return hash_entry(temp_hash_elem, struct page, hash_elem);
 }
