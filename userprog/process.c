@@ -221,7 +221,7 @@ int process_exec(void *f_name)
     bool success;
     // memcpy(values, file_name, strlen(file_name) + 1);
 
-    vm_init();
+    supplemental_page_table_init();
 
     /* We cannot use the intr_frame in the thread structure.
      * This is because when current thread rescheduled,

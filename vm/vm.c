@@ -40,10 +40,7 @@ hash_delete(vm, &page->hash_elem);
  * intialize codes. */
 void
 vm_init (void) {
-	struct hash cur_hash = thread_current()->vm;
 
-	hash_init(&cur_hash, vm_hash_func, vm_less_func, NULL);
-	 
 	vm_anon_init ();
 	vm_file_init ();
 #ifdef EFILESYS  /* For project 4 */
@@ -211,6 +208,8 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	struct hash cur_hash = spt->vm;
+	hash_init(&cur_hash, vm_hash_func, vm_less_func, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
@@ -226,6 +225,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 }
 
+/* ---------------------------- Project.3 -------------------------------*/
 /**
  * vm_entry의 vaddr을 인자값으로 hash_int() 함수를 사용하여 해시 값 반환
  */
@@ -260,12 +260,21 @@ struct page *find_vme (void *va)
 uint64_t va_page_num = pg_round_down(va);
 struct hash cur_hash = thread_current()->vm;
 
-/* hash_find() 함수를 사용해서 hash_elem 구조체 얻음 */
-hash_find(cur_hash, va_page_num);
 
+/* Create a temporary vm_entry to use for searching */
+struct page temp_vm_entry;
+temp_vm_entry.va = va_page_num;
+
+/* Prepare a hash_elem for the search */
+struct hash_elem *temp_hash_elem = hash_find(&cur_hash, &(temp_vm_entry.hash_elem));
+
+/* Check if the element was found */
 /* 만약 존재하지 않는다면 NULL 리턴 */
+if (temp_hash_elem == NULL) {
+		return NULL;
+}
 
-
-/* hash_entry()로 해당 hash_elem의 vm_entry 구조체 리턴 */
-
+/* Return the vm_entry structure of the corresponding hash_elem with hash_entry() */
+/* hash_entry()로 해당 hash_elem의 page 구조체 리턴 */
+return hash_entry(temp_hash_elem, struct page, hash_elem);
 }
