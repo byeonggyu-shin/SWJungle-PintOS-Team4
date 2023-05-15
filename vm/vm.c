@@ -5,7 +5,7 @@
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
 #include "threads/vaddr.h"
-
+#include "threads/mmu.h"
 #include <stdbool.h>
 
 static unsigned vm_hash_func (const struct hash_elem *e,void *aux);
@@ -15,7 +15,6 @@ static bool vm_less_func (const struct hash_elem *a, const struct hash_elem *b);
  * intialize codes. */
 void
 vm_init (void) {
-
 	vm_anon_init ();
 	vm_file_init ();
 #ifdef EFILESYS  /* For project 4 */
@@ -74,27 +73,20 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
-
 	/* pg_round_down()으로 vaddr의 페이지 번호를 얻음 */
 	uint64_t va_page_num = pg_round_down(va);
-
 	/* Create a temporary vm_entry to use for searching */
 	page->va = va_page_num;
-
 	/* Prepare a hash_elem for the search */
 	struct hash_elem *temp_hash_elem = hash_find(spt, &(page->hash_elem));
-
 	/* Check if the element was found */
 	/* 만약 존재하지 않는다면 NULL 리턴 */
 	if (temp_hash_elem == NULL) {
 			return NULL;
-}
-
-/* Return the vm_entry structure of the corresponding hash_elem with hash_entry() */
-/* hash_entry()로 해당 hash_elem의 page 구조체 리턴 */
-return hash_entry(temp_hash_elem, struct page, hash_elem);
-
-	return page;
+	}
+	/* Return the vm_entry structure of the corresponding hash_elem with hash_entry() */
+	/* hash_entry()로 해당 hash_elem의 page 구조체 리턴 */
+	return hash_entry(temp_hash_elem, struct page, hash_elem);
 }
 
 /* Insert PAGE into spt with validation. */
@@ -111,10 +103,14 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
+	pml4_clear_page(thread_current()->pml4, page->va);
+	hash_delete(&spt->hash_table, &page->hash_elem);
+
+	if (page->frame != NULL) {
+		page->frame->page = NULL;
+	}	
 	vm_dealloc_page (page);
-
 	// hash_delete(spt, &page->hash_elem);
-
 	return true;
 }
 
@@ -123,7 +119,6 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
-
 	return victim;
 }
 
@@ -219,7 +214,7 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	struct hash cur_hash = spt->vm;
+	struct hash cur_hash = spt->hash_table;
 	hash_init(&cur_hash, vm_hash_func, vm_less_func, NULL);
 }
 
@@ -243,7 +238,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 static unsigned vm_hash_func (const struct hash_elem *e,void *aux)
 {
 /* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
-void *hash_va = hash_entry(e, struct page, hash_elem)->va;
+void *hash_va = hash_entry(e, struct page, _elem)->va;
 /* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을
 구하고 반환 */
 return hash_int((uint64_t)&hash_va);

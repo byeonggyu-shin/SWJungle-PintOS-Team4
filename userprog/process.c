@@ -221,8 +221,6 @@ int process_exec(void *f_name)
     bool success;
     // memcpy(values, file_name, strlen(file_name) + 1);
 
-    supplemental_page_table_init();
-
     /* We cannot use the intr_frame in the thread structure.
      * This is because when current thread rescheduled,
      * it stores the execution information to the member. */
@@ -249,6 +247,11 @@ int process_exec(void *f_name)
     /*-------------------------[project 2]-------------------------*/
 
     process_cleanup();
+
+
+#ifdef VM
+	supplemental_page_table_init(&thread_current()->spt);
+#endif
 
     /* And then load the binary */
     success = load(file_name, &_if);
@@ -820,7 +823,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
     }
-    frame return true;
+    return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
