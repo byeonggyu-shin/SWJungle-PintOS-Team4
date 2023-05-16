@@ -211,7 +211,22 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page;
 	/*----------------[project3]-------------------*/
+	/* 주소가 커널 영역일 때 */
+	if (is_kernel_vaddr(addr))
+	{
+		return false;
+	}
 
+	/* 페이지가 메모리에 없을 때 => 찐 페이지폴트 */
+	if (not_present)
+	{
+		return false;
+	}
+
+	/* bogus 폴트일 때 */
+	if ()
+	{
+	}
 	/*----------------[project3]-------------------*/
 
 	return vm_do_claim_page(page);
