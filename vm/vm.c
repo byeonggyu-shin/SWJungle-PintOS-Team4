@@ -260,7 +260,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 static unsigned vm_hash_func (const struct hash_elem *e,void *aux)
 {
 /* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
-void *hash_va = hash_entry(e, struct page, _elem)->va;
+void *hash_va = hash_entry(e, struct page, hash_elem)->va;
 /* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을
 구하고 반환 */
 return hash_int((uint64_t)&hash_va);
