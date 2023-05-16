@@ -7,6 +7,7 @@
 #include "threads/vaddr.h"
 #include "threads/mmu.h"
 #include <stdbool.h>
+#include "userprog/process.h"
 
 /*----------------[project3]-------------------*/
 static unsigned vm_hash_func(const struct hash_elem *e, void *aux);
@@ -258,7 +259,7 @@ vm_do_claim_page(struct page *page)
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	if (!spt_insert_page(&thread_current()->spt, page))
+	if (!install_page(page->va, frame->kva, page->writable))
 	{
 		return false;
 	}
