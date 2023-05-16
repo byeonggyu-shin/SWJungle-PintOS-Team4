@@ -170,17 +170,19 @@ vm_get_frame(void)
 {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-	char *new_memory;
+	char *new_kva;
 
-	if (new_memory = palloc_get_page(PAL_USER))
+	if (new_kva = palloc_get_page(PAL_USER))
 	{
-		frame->kva = new_memory;
+		frame = (struct frame *)malloc(sizeof(struct frame)); /* 🤔 */
+		frame->kva = new_kva;
 		frame->page = NULL;
 	}
 	else
 	{
 		PANIC("todo");
 	}
+	// frame->thread = thread_current();
 
 	ASSERT(frame != NULL);
 	ASSERT(frame->page == NULL);
