@@ -106,7 +106,7 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 	/* Create a temporary vm_entry to use for searching */
 	page->va = va_page_num;
 	/* Prepare a hash_elem for the search */
-	struct hash_elem *temp_hash_elem = hash_find(spt, &(page->hash_elem));
+	struct hash_elem *temp_hash_elem = hash_find(spt->hash_table, &(page->hash_elem));
 	/* Check if the element was found */
 	/* 만약 존재하지 않는다면 NULL 리턴 */
 	if (temp_hash_elem == NULL)
@@ -294,8 +294,7 @@ static unsigned vm_hash_func(const struct hash_elem *e, void *aux)
 {
 	/* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
 	void *hash_va = hash_entry(e, struct page, hash_elem)->va;
-	/* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을
-	구하고 반환 */
+	/* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을 구하고 반환 */
 	return hash_int((uint64_t)&hash_va);
 }
 
