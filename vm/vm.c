@@ -97,6 +97,7 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
+/* 주어진 spt에서 va(virtual address)에 해당하는 구조체 page를 찾는 함수 */
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 { /*----------------[project3]-------------------*/
@@ -239,11 +240,16 @@ void vm_dealloc_page(struct page *page)
 }
 
 /* Claim the page that allocate on VA. */
+/* 주어진 가상 주소에 해당하는 페이지를 실제로 할당하고 관리하기 위한 함수 */
 bool vm_claim_page(void *va UNUSED)
 {
 	struct page *page = NULL;
-	/* TODO: Fill this function */
-	page->va = va;
+	page = spt_find_page(&thread_current()->spt, va); /* spt에서 va에 해당하는 페이지 찾기 */
+
+	if (page == NULL)
+	{
+		return false;
+	}
 
 	return vm_do_claim_page(page);
 }
