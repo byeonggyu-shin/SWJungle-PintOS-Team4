@@ -46,8 +46,12 @@ struct page {
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
+
+	/* --- Project3 --- */
 	/* Your implementation */
 	struct hash_elem hash_elem;
+	bool writable;
+	struct thread *t;
 	
 
 	/* Per-type data are binded into the union.
