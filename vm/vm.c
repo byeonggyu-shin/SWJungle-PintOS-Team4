@@ -77,7 +77,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 			uninit_new(new_page, upage, init, type, aux, file_backed_initializer);
 			break;
 		default:
-			break;
+			goto err;
 		}
 		new_page->writable = writable;
 		new_page->t = thread_current();
@@ -88,7 +88,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		}
 		else
 		{
-			return false;
+			goto err;
 		}
 		/*----------------[project3]-------------------*/
 	}
@@ -216,16 +216,22 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 		return false;
 	}
 
-	/* 페이지가 메모리에 없을 때 => 찐 페이지폴트 */
-	if (not_present)
+	if (not_present) /* 페이지가 메모리에 없다면 */
+	{
+		if (!vm_claim_page(addr)) /* 페이지를 확보할 수 없다면 */
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	else
 	{
 		return false;
 	}
 
-	/* bogus 폴트일 때 */
-	if ()
-	{
-	}
 	/*----------------[project3]-------------------*/
 
 	return vm_do_claim_page(page);
@@ -255,6 +261,7 @@ bool vm_claim_page(void *va UNUSED)
 }
 
 /* Claim the PAGE and set up the mmu. */
+/* 페이지를 확보하고 페이지 테이블 엔트리를 설정하여 페이지와 물리 프레임 간의 매핑을 수행하는 함수 */
 static bool
 vm_do_claim_page(struct page *page)
 {
