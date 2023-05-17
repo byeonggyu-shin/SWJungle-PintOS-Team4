@@ -9,8 +9,12 @@ int process_exec(void *f_name);
 int process_wait(tid_t);
 void process_exit(void);
 void process_activate(struct thread *next);
-/* project2 */
+/*-------------------------[project 2]-------------------------*/
 void argument_stack(char **parse, int count, struct intr_frame *if_);
 struct thread *get_child_process(int pid);
+/*-------------------------[project 2]-------------------------*/
+/*-------------------------[project 3]-------------------------*/
+static bool install_page(void *upage, void *kpage, bool writable);
+/*-------------------------[project 3]-------------------------*/
 
 #endif /* userprog/process.h */

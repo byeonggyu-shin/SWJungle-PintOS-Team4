@@ -1,5 +1,5 @@
 #ifndef THREADS_PTE_H
-#define THREADS_PTE_H
+#define S_PTE_H
 
 #include "threads/vaddr.h"
 

@@ -159,7 +159,7 @@ static void __do_fork(void *aux)
     struct intr_frame if_;
     struct thread *parent = (struct thread *)aux;
     struct thread *current = thread_current();
-    struct intr_frame *parent_if = &parent->parent_if;  /* project2 수정*/
+    struct intr_frame *parent_if = &parent->parent_if; /* project2 수정*/
 
     bool succ = true;
 
@@ -174,16 +174,16 @@ static void __do_fork(void *aux)
 
     process_activate(current);
 
-    #ifdef VM
-        supplemental_page_table_init(&current->spt);
-        if (!supplemental_page_table_copy(&current->spt, &parent->spt))
-            goto error;
-    #else
-        if (!pml4_for_each(parent->pml4, duplicate_pte, parent))
-            goto error;
-    #endif
-        if (parent->next_fd >= FDCOUNT_LIMIT)
-            goto error;
+#ifdef VM
+    supplemental_page_table_init(&current->spt);
+    if (!supplemental_page_table_copy(&current->spt, &parent->spt))
+        goto error;
+#else
+    if (!pml4_for_each(parent->pml4, duplicate_pte, parent))
+        goto error;
+#endif
+    if (parent->next_fd >= FDCOUNT_LIMIT)
+        goto error;
 
     /*-------------------------[project 2]-------------------------*/
     current->fdt[0] = parent->fdt[0];
@@ -247,6 +247,10 @@ int process_exec(void *f_name)
     /*-------------------------[project 2]-------------------------*/
 
     process_cleanup();
+
+#ifdef VM
+    supplemental_page_table_init(&thread_current()->spt);
+#endif
 
     /* And then load the binary */
     success = load(file_name, &_if);
@@ -461,13 +465,8 @@ load(const char *file_name, struct intr_frame *if_)
 
     /* Read and verify executable header. */
     /* Read and verify executable header. */
-    if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr 
-    || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) 
-    || ehdr.e_type != 2 
-    || ehdr.e_machine != 0x3E // amd64
-    || ehdr.e_version != 1 
-    || ehdr.e_phentsize != sizeof(struct Phdr) 
-    || ehdr.e_phnum > 1024)
+    if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
+        || ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
     {
         printf("load: %s: error loading executable\n", file_name);
         goto done;
@@ -755,6 +754,7 @@ setup_stack(struct intr_frame *if_)
  * with palloc_get_page().
  * Returns true on success, false if UPAGE is already mapped or
  * if memory allocation fails. */
+/* 주어진 가상 주소 upage에 대해 물리 페이지 kpage를 매핑하는 함수 */
 static bool
 install_page(void *upage, void *kpage, bool writable)
 {
@@ -818,7 +818,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
     }
-    frame return true;
+    return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
