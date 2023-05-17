@@ -121,7 +121,9 @@ kill(struct intr_frame *f)
 static void
 page_fault(struct intr_frame *f)
 {
-	bool not_present; /* True: not-present page, false: writing r/o page. */
+	bool not_present; /* True: not-present page, false: writing r/o page.
+						 true: 페이지가 메모리에 없어서 페이지 폴트가 발생했음
+						 false: 페이지가 읽기 전용으로 설정되어 있는 상태에서 쓰기 작업을 시도하여 페이지 폴트가 발생했음*/
 	bool write;		  /* True: access was write, false: access was read. */
 	bool user;		  /* True: access by user, false: access by kernel. */
 	void *fault_addr; /* Fault address. */
@@ -162,5 +164,5 @@ page_fault(struct intr_frame *f)
 		   write ? "writing" : "reading",
 		   user ? "user" : "kernel");
 	// kill (f);
-	exit(-1); /* 🤔 */
+	exit(-1);
 }
