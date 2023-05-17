@@ -15,7 +15,7 @@
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
-void check_address(const void *addr);
+struct page *check_address(const void *addr);
 
 void halt(void);
 void exit(int status);
@@ -161,13 +161,20 @@ void syscall_handler(struct intr_frame *f)
 }
 
 /* 입력된 주소가 유효한 주소인지 확인하고, 그렇지 않으면 프로세스를 종료시키는 함수 */
-void check_address(const void *addr)
+struct page *check_address(const void *addr)
 {
 	struct thread *curr = thread_current();
 
 	if (is_kernel_vaddr(addr) || addr == NULL || pml4_get_page(curr->pml4, addr) == NULL)
 	{
 		exit(-1);
+	} else {
+		struct page *page = spt_find_page(&thread_current()->spt, addr);
+		if (page == NULL) {
+			exit(-1);
+		} else {
+			return page;
+		}
 	}
 }
 

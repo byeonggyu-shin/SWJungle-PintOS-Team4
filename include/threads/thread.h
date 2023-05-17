@@ -142,7 +142,7 @@ struct thread
 
 	struct file **fdt;
 	int next_fd;
-	/* 🤔 */
+	
 	struct file *running; // 현재 스레드가 사용 중인 파일(load하고 있는 파일)
 	int stdin_count;
 	int stdout_count;
