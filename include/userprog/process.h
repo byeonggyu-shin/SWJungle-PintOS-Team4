@@ -15,6 +15,13 @@ struct thread *get_child_process(int pid);
 /*-------------------------[project 2]-------------------------*/
 /*-------------------------[project 3]-------------------------*/
 static bool install_page(void *upage, void *kpage, bool writable);
+
+struct container{
+    struct file *file;
+    off_t offset;
+    size_t read_bytes;
+};
+
 /*-------------------------[project 3]-------------------------*/
 
 #endif /* userprog/process.h */

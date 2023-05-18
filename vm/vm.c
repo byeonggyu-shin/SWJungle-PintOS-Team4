@@ -12,6 +12,7 @@
 /*----------------[project3]-------------------*/
 static unsigned vm_hash_func(const struct hash_elem *e, void *aux);
 static bool vm_less_func(const struct hash_elem *a, const struct hash_elem *b);
+static void spt_destroy_func(struct hash_elem *e, void *aux);
 /*----------------[project3]-------------------*/
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -48,6 +49,7 @@ page_get_type(struct page *page)
 static struct frame *vm_get_victim(void);
 static bool vm_do_claim_page(struct page *page);
 static struct frame *vm_evict_frame(void);
+void spt_dealloc(struct hash_elem *e, void *aux);
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -108,7 +110,7 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 	/* Create a temporary vm_entry to use for searching */
 	page->va = va_page_num;
 	/* Prepare a hash_elem for the search */
-	struct hash_elem *temp_hash_elem = hash_find(spt->hash_table, &(page->hash_elem));
+	struct hash_elem *temp_hash_elem = hash_find(&spt->hash_table, &(page->hash_elem));
 	/* Check if the element was found */
 	/* 만약 존재하지 않는다면 NULL 리턴 */
 	if (temp_hash_elem == NULL)
@@ -126,7 +128,7 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 					 struct page *page UNUSED)
 {
 	/* TODO: Fill this function. */
-	return (hash_insert(&spt->hash_table, &page->hash_elem)) ? false : true; /* 🤔 */
+	return (hash_insert(&spt->hash_table, &page->hash_elem)) ? false : true; 
 }
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
@@ -176,7 +178,7 @@ vm_get_frame(void)
 
 	if (new_kva = palloc_get_page(PAL_USER))
 	{
-		frame = (struct frame *)malloc(sizeof(struct frame)); /* 🤔 */
+		frame = (struct frame *)malloc(sizeof(struct frame)); 
 		frame->kva = new_kva;
 		frame->page = NULL;
 	}
@@ -267,16 +269,24 @@ vm_do_claim_page(struct page *page)
 {
 	struct frame *frame = vm_get_frame();
 
+  if (frame == NULL) return false;
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	if (!install_page(page->va, frame->kva, page->writable))
-	{
-		return false;
-	}
-	return swap_in(page, frame->kva);
+	// if (!install_page(page->va, frame->kva, page->writable))
+	// {
+	// 	return false;
+	// }
+	// return swap_in(page, frame->kva);
+
+	struct thread *t = thread_current();
+  list_push_back(&lru, &(frame->lru_elem));
+
+  if (pml4_set_page(t->pml4, page->va, frame->kva, page->writable) == false) return false;
+
+  return swap_in(page, frame->kva);
 }
 
 /* Initialize new supplemental page table */
@@ -287,9 +297,46 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 }
 
 /* Copy supplemental page table from src to dst */
+/**
+ * src에서 dst로 spt을 복사하는 함수
+*/
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
-								  struct supplemental_page_table *src UNUSED)
+								  struct supplemental_page_table *src UNUSED){
+		struct hash_iterator i;
+    hash_first (&i, &src->hash_table);
+
+		// src의 각각의 페이지를 반복문을 통해 복사
+    while (hash_next (&i)) {	
+				// 현재 해시 테이블의 element 리턴
+        struct page *parent_page = hash_entry (hash_cur (&i), struct page, hash_elem);  
+				// 부모 페이지의 type 
+        enum vm_type type = page_get_type(parent_page);	
+				// 부모 페이지의 가상 주소
+        void *upage = parent_page->va;		
+				// 부모 페이지의 쓰기 가능 여부				
+        bool writable = parent_page->writable;	
+				// 부모의 초기화되지 않은 페이지들 할당 위해 		
+        vm_initializer *init = parent_page->uninit.init;	
+        void* aux = parent_page->uninit.aux;
+				// 부모 타입이 uninit인 경우
+        if(parent_page->operations->type == VM_UNINIT) {
+						// 부모의 타입, 부모의 페이지 va, 부모의 writable, 부모의 uninit.init, 부모의 aux (container)
+            if(!vm_alloc_page_with_initializer(type, upage, writable, init, aux)) return false;
+        }
+        else {
+            if(!vm_alloc_page(type, upage, writable)) return false;
+            if(!vm_claim_page(upage)) return false;
+						struct page* child_page = spt_find_page(dst, upage);
+            memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+        }
+    }
+    return true;
+}
+
+static void spt_destroy_func(struct hash_elem *e, void *aux)
 {
+  const struct page *pg = hash_entry(e, struct page, hash_elem);
+  vm_dealloc_page(pg);
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -297,16 +344,20 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	// lock_acquire(&kill_lock);
+  hash_destroy(&(spt->hash_table), spt_destroy_func);
+  // lock_release(&kill_lock);
 }
 
 /*----------------[project3]-------------------*/
 /* vm_entry의 vaddr을 인자값으로 hash_int() 함수를 사용하여 해시 값 반환 */
 static unsigned vm_hash_func(const struct hash_elem *e, void *aux)
 {
-	/* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
-	void *hash_va = hash_entry(e, struct page, hash_elem)->va;
-	/* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을 구하고 반환 */
-	return hash_int((uint64_t)&hash_va);
+/* hash_entry()로 element에 대한 vm_entry 구조체 검색 */
+void *hash_va = hash_entry(e, struct page, hash_elem)->va;
+/* hash_int()를 이용해서 vm_entry의 멤버 vaddr에 대한 해시값을
+구하고 반환 */
+return hash_int((uint64_t)&hash_va);
 }
 
 /*
@@ -314,8 +365,7 @@ static unsigned vm_hash_func(const struct hash_elem *e, void *aux)
  * a의 vaddr이 b보다 작을 시 true 반환
  * a의 vaddr이 b보다 클 시 false 반환
  */
-static bool vm_less_func(const struct hash_elem *a, const struct
-						 hash_elem *b)
+static bool vm_less_func(const struct hash_elem *a, const struct hash_elem *b)
 {
 	/* hash_entry()로 각각의 element에 대한 vm_entry 구조체를 얻은 후
 	vaddr 비교 (b가 크다면 true, a가 크다면 false */
